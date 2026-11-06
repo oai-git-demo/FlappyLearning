@@ -18,7 +18,7 @@ function fixture(fps){
 	var context = vm.createContext({
 		Math: math,
 		window: {addEventListener: function(){}},
-		document: {querySelector: function(){
+		document: {querySelectorAll: function(){ return []; }, querySelector: function(){
 			return {width: 500, height: 512, getContext: function(){ return {}; }};
 		}},
 		setTimeout: function(fn, delay){
@@ -164,6 +164,44 @@ check('learning continues through multiple generations after resume', function()
 	assert.equal(f.game.generation, 4);
 	assert.equal(f.game.birds.length, 50);
 	assert.equal(f.pending().length, 1);
+});
+
+check('combined startup binds pause button and updates telemetry', function(){
+	var f = fixture(60);
+	var nodes = {};
+	['score', 'max-score', 'generation', 'alive', 'flight-status', 'pause-toggle'].forEach(function(id){
+		nodes[id] = {textContent: '', disabled: true, attributes: {},
+			setAttribute: function(name, value){ this.attributes[name] = value; },
+			addEventListener: function(name, handler){ this[name] = handler; }};
+	});
+	var canvas = {width: 500, height: 512, getContext: function(){
+		return {clearRect: function(){}, drawImage: function(){}, save: function(){},
+			translate: function(){}, rotate: function(){}, restore: function(){}};
+	}};
+	f.context.document.querySelector = function(selector){
+		return selector == '#flappy' ? canvas : nodes[selector.slice(1)];
+	};
+	f.context.prepareImages = function(){
+		return {background: {width: 500}, bird: {}, pipetop: {height: 512}, pipebottom: {height: 512}};
+	};
+	f.context.requestAnimationFrame = function(){};
+	f.context.window.onload();
+	var game = f.context.game;
+	var button = nodes['pause-toggle'];
+	assert.equal(button.disabled, false);
+	assert.equal(nodes.generation.textContent, 1);
+	button.click();
+	game.display();
+	assert.equal(game.paused, true);
+	assert.equal(button.textContent, 'Resume');
+	assert.equal(button.attributes['aria-pressed'], 'true');
+	assert.equal(nodes['flight-status'].textContent, '● SIMULATION PAUSED');
+	button.click();
+	game.display();
+	assert.equal(game.paused, false);
+	assert.equal(button.textContent, 'Pause');
+	assert.equal(button.attributes['aria-pressed'], 'false');
+	assert.equal(nodes['flight-status'].textContent, '● SIMULATION ACTIVE');
 });
 
 console.log(passed + ' checks passed');

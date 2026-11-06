@@ -8,6 +8,19 @@ Run the dependency-free pause/resume regression checks with `node tests/pause-re
 
 ![alt tag](https://github.com/xviniette/FlappyLearning/blob/gh-pages/img/flappy.png?raw=true)
 
+### Orbital Flight presentation
+
+Open `index.html` directly, or serve this directory with `python3 -m http.server 8000`.
+The responsive cockpit scales the 500 × 512 canvas without changing simulation coordinates.
+Score, maximum score, generation, and surviving pilots appear above the play area;
+use x1, x2, x3, x5, or MAX to select the simulation speed.
+
+`art.js` prepares local canvas sprites once at startup: gold mechanical pilots,
+station towers, and a repeating orbital city background. No remote assets or fonts
+are needed. The original PNGs remain in `img/`. Background motion follows the
+simulation's `backgroundx`; artwork uses no random numbers or independent animation.
+The simulation still uses 50 birds and a 2 → 2 → 1 neural network.
+
 ### [NeuroEvolution.js](http://github.com/xviniette/FlappyLearning/blob/gh-pages/Neuroevolution.js) : Utilization
 ```javascript
 // Initialize
