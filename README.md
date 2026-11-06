@@ -2,6 +2,10 @@
 
 Program that learns to play Flappy Bird by machine learning ([Neuroevolution](http://www.scholarpedia.org/article/Neuroevolution))
 
+Use Pause/Resume to freeze movement and learning while keeping the current generation intact. The button supports Tab, Enter, and Space. Speed changes made while paused take effect on resume.
+
+Run the dependency-free pause/resume regression checks with `node tests/pause-resume.test.js`.
+
 ![alt tag](https://github.com/xviniette/FlappyLearning/blob/gh-pages/img/flappy.png?raw=true)
 
 ### [NeuroEvolution.js](http://github.com/xviniette/FlappyLearning/blob/gh-pages/Neuroevolution.js) : Utilization
