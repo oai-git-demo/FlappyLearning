@@ -137,6 +137,10 @@ var Game = function(){
 	this.backgroundSpeed = 0.5;
 	this.backgroundx = 0;
 	this.maxScore = 0;
+	this.paused = false;
+	this.updateTimer = null;
+	this.updateScheduled = false;
+	this.updateEpoch = 0;
 }
 
 Game.prototype.start = function(){
@@ -154,7 +158,47 @@ Game.prototype.start = function(){
 	this.alives = this.birds.length;
 }
 
+Game.prototype.setPaused = function(paused){
+	if(this.paused == paused){
+		return;
+	}
+	this.paused = paused;
+	this.updateEpoch++;
+	clearTimeout(this.updateTimer);
+	this.updateTimer = null;
+	this.updateScheduled = false;
+	if(!this.paused){
+		this.scheduleUpdate();
+	}
+}
+
+Game.prototype.scheduleUpdate = function(){
+	if(this.paused || this.updateScheduled){
+		return;
+	}
+	var self = this;
+	var epoch = this.updateEpoch;
+	this.updateScheduled = true;
+	var tick = function(){
+		// MAX callbacks cannot be cancelled; ignore callbacks from before a pause.
+		if(self.paused || epoch != self.updateEpoch){
+			return;
+		}
+		self.updateTimer = null;
+		self.updateScheduled = false;
+		self.update();
+	};
+	if(FPS == 0){
+		setZeroTimeout(tick);
+	}else{
+		this.updateTimer = setTimeout(tick, 1000/FPS);
+	}
+}
+
 Game.prototype.update = function(){
+	if(this.paused || this.updateScheduled){
+		return;
+	}
 	this.backgroundx += this.backgroundSpeed;
 	var nextHoll = 0;
 	if(this.birds.length > 0){
@@ -215,17 +259,7 @@ Game.prototype.update = function(){
 
 	this.score++;
 	this.maxScore = (this.score > this.maxScore) ? this.score : this.maxScore;
-	var self = this;
-
-	if(FPS == 0){
-		setZeroTimeout(function(){
-			self.update();
-		});
-	}else{
-		setTimeout(function(){
-			self.update();
-		}, 1000/FPS);
-	}
+	this.scheduleUpdate();
 }
 
 
@@ -240,8 +274,10 @@ Game.prototype.isItEnd = function(){
 
 Game.prototype.display = function(){
 	this.ctx.clearRect(0, 0, this.width, this.height);
-	for(var i = 0; i < Math.ceil(this.width / images.background.width) + 1; i++){
-		this.ctx.drawImage(images.background, i * images.background.width - Math.floor(this.backgroundx%images.background.width), 0)
+	// The skyline stays fixed; only the seamless foreground follows simulation time.
+	this.ctx.drawImage(images.background, 0, 0, this.width, this.height);
+	for(var i = 0; i < Math.ceil(this.width / images.terrain.width) + 1; i++){
+		this.ctx.drawImage(images.terrain, i * images.terrain.width - Math.floor(this.backgroundx%images.terrain.width), this.height - images.terrain.height);
 	}
 
 	for(var i in this.pipes){
@@ -264,12 +300,25 @@ Game.prototype.display = function(){
 		}
 	}
 
-	this.ctx.fillStyle = "white";
-	this.ctx.font="20px Oswald, sans-serif";
-	this.ctx.fillText("Score : "+ this.score, 10, 25);
-	this.ctx.fillText("Max Score : "+this.maxScore, 10, 50);
-	this.ctx.fillText("Generation : "+this.generation, 10, 75);
-	this.ctx.fillText("Alive : "+this.alives+" / "+Neuvol.options.population, 10, 100);
+	this.ctx.fillStyle = "rgba(13, 30, 37, 0.94)";
+	this.ctx.fillRect(10, 10, this.width - 20, 58);
+	this.ctx.strokeStyle = "#647b70";
+	this.ctx.strokeRect(10.5, 10.5, this.width - 21, 57);
+	var telemetry = [
+		["SCORE", this.score],
+		["BEST", this.maxScore],
+		["GENERATION", this.generation],
+		["ALIVE", this.alives + " / " + Neuvol.options.population]
+	];
+	for(var i = 0; i < telemetry.length; i++){
+		var x = 23 + i * 120;
+		this.ctx.fillStyle = "#a8c4bc";
+		this.ctx.font = "10px Arial, sans-serif";
+		this.ctx.fillText(telemetry[i][0], x, 29);
+		this.ctx.fillStyle = "#f4d495";
+		this.ctx.font = "bold 19px Arial, sans-serif";
+		this.ctx.fillText(telemetry[i][1], x, 53, 106);
+	}
 
 	var self = this;
 	requestAnimationFrame(function(){
@@ -279,10 +328,11 @@ Game.prototype.display = function(){
 
 window.onload = function(){
 	var sprites = {
-		bird:"./img/bird.png",
-		background:"./img/background.png",
-		pipetop:"./img/pipetop.png",
-		pipebottom:"./img/pipebottom.png"
+		bird:"./img/sci-fi-bird.svg",
+		background:"./img/sci-fi-background.svg",
+		terrain:"./img/sci-fi-terrain.svg",
+		pipetop:"./img/sci-fi-pipetop.svg",
+		pipebottom:"./img/sci-fi-pipebottom.svg"
 	}
 
 	var start = function(){
@@ -294,6 +344,12 @@ window.onload = function(){
 		game.start();
 		game.update();
 		game.display();
+		var pauseButton = document.querySelector("#pause-resume");
+		pauseButton.addEventListener("click", function(){
+			game.setPaused(!game.paused);
+			pauseButton.textContent = game.paused ? "Resume" : "Pause";
+		});
+		pauseButton.disabled = false;
 	}
 
 
