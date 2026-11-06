@@ -137,6 +137,48 @@ var Game = function(){
 	this.backgroundSpeed = 0.5;
 	this.backgroundx = 0;
 	this.maxScore = 0;
+	this.paused = false;
+	this.updateTimeout = null;
+	this.schedulingToken = 0;
+}
+
+Game.prototype.pause = function(){
+	if(this.paused){
+		return;
+	}
+	this.paused = true;
+	this.schedulingToken++;
+	clearTimeout(this.updateTimeout);
+	this.updateTimeout = null;
+}
+
+Game.prototype.resume = function(){
+	if(!this.paused){
+		return;
+	}
+	this.paused = false;
+	this.scheduleUpdate();
+}
+
+Game.prototype.scheduleUpdate = function(){
+	if(this.paused){
+		return;
+	}
+	var self = this;
+	var token = ++this.schedulingToken;
+	var update = function(){
+		// A queued MAX callback cannot be cancelled, so reject stale work.
+		if(self.paused || token != self.schedulingToken){
+			return;
+		}
+		self.updateTimeout = null;
+		self.update();
+	};
+	if(FPS == 0){
+		setZeroTimeout(update);
+	}else{
+		this.updateTimeout = setTimeout(update, 1000/FPS);
+	}
 }
 
 Game.prototype.start = function(){
@@ -155,6 +197,9 @@ Game.prototype.start = function(){
 }
 
 Game.prototype.update = function(){
+	if(this.paused){
+		return;
+	}
 	this.backgroundx += this.backgroundSpeed;
 	var nextHoll = 0;
 	if(this.birds.length > 0){
@@ -215,17 +260,7 @@ Game.prototype.update = function(){
 
 	this.score++;
 	this.maxScore = (this.score > this.maxScore) ? this.score : this.maxScore;
-	var self = this;
-
-	if(FPS == 0){
-		setZeroTimeout(function(){
-			self.update();
-		});
-	}else{
-		setTimeout(function(){
-			self.update();
-		}, 1000/FPS);
-	}
+	this.scheduleUpdate();
 }
 
 
@@ -294,6 +329,17 @@ window.onload = function(){
 		game.start();
 		game.update();
 		game.display();
+		var pauseToggle = document.querySelector("#pause-toggle");
+		pauseToggle.addEventListener("click", function(){
+			if(game.paused){
+				game.resume();
+			}else{
+				game.pause();
+			}
+			pauseToggle.textContent = game.paused ? "Resume" : "Pause";
+			pauseToggle.setAttribute("aria-pressed", game.paused ? "true" : "false");
+		});
+		pauseToggle.disabled = false;
 	}
 
 
