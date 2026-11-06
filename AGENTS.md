@@ -16,7 +16,7 @@
 
 ## Validation
 - Open `index.html` in a browser. Alternatively, serve the repository with `python3 -m http.server 8000` and visit `http://localhost:8000`.
-- No automated test suite is included. For code changes, check the browser console, sprite rendering, score updates, generation rollover, and all speed controls, including MAX.
+- Run `node tests/pause-resume.test.js` for deterministic regression checks. Also check the browser console, sprite rendering, score updates, generation rollover, and all speed controls, including MAX.
 - For learning changes, observe several generations; randomized runs do not produce identical scores.
 - Report what was checked and any checks that were not performed.
 

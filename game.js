@@ -31,22 +31,9 @@ var images = {};
 
 var speed = function(fps){
 	FPS = parseInt(fps);
-}
-
-var loadImages = function(sources, callback){
-	var nb = 0;
-	var loaded = 0;
-	var imgs = {};
-	for(var i in sources){
-		nb++;
-		imgs[i] = new Image();
-		imgs[i].src = sources[i];
-		imgs[i].onload = function(){
-			loaded++;
-			if(loaded == nb){
-				callback(imgs);
-			}
-		}
+	var buttons = document.querySelectorAll(".control-button[data-fps]");
+	for(var i = 0; i < buttons.length; i++){
+		buttons[i].setAttribute("aria-pressed", buttons[i].getAttribute("data-fps") == FPS ? "true" : "false");
 	}
 }
 
@@ -137,6 +124,55 @@ var Game = function(){
 	this.backgroundSpeed = 0.5;
 	this.backgroundx = 0;
 	this.maxScore = 0;
+	this.paused = false;
+	this.updateTimeout = null;
+	this.schedulingToken = 0;
+	this.telemetry = {
+		score:document.querySelector("#score"),
+		maxScore:document.querySelector("#max-score"),
+		generation:document.querySelector("#generation"),
+		alive:document.querySelector("#alive"),
+		status:document.querySelector("#flight-status")
+	};
+}
+
+Game.prototype.pause = function(){
+	if(this.paused){
+		return;
+	}
+	this.paused = true;
+	this.schedulingToken++;
+	clearTimeout(this.updateTimeout);
+	this.updateTimeout = null;
+}
+
+Game.prototype.resume = function(){
+	if(!this.paused){
+		return;
+	}
+	this.paused = false;
+	this.scheduleUpdate();
+}
+
+Game.prototype.scheduleUpdate = function(){
+	if(this.paused){
+		return;
+	}
+	var self = this;
+	var token = ++this.schedulingToken;
+	var update = function(){
+		// A queued MAX callback cannot be cancelled, so reject stale work.
+		if(self.paused || token != self.schedulingToken){
+			return;
+		}
+		self.updateTimeout = null;
+		self.update();
+	};
+	if(FPS == 0){
+		setZeroTimeout(update);
+	}else{
+		this.updateTimeout = setTimeout(update, 1000/FPS);
+	}
 }
 
 Game.prototype.start = function(){
@@ -155,6 +191,9 @@ Game.prototype.start = function(){
 }
 
 Game.prototype.update = function(){
+	if(this.paused){
+		return;
+	}
 	this.backgroundx += this.backgroundSpeed;
 	var nextHoll = 0;
 	if(this.birds.length > 0){
@@ -215,17 +254,7 @@ Game.prototype.update = function(){
 
 	this.score++;
 	this.maxScore = (this.score > this.maxScore) ? this.score : this.maxScore;
-	var self = this;
-
-	if(FPS == 0){
-		setZeroTimeout(function(){
-			self.update();
-		});
-	}else{
-		setTimeout(function(){
-			self.update();
-		}, 1000/FPS);
-	}
+	this.scheduleUpdate();
 }
 
 
@@ -245,15 +274,14 @@ Game.prototype.display = function(){
 	}
 
 	for(var i in this.pipes){
-		if(i%2 == 0){
-			this.ctx.drawImage(images.pipetop, this.pipes[i].x, this.pipes[i].y + this.pipes[i].height - images.pipetop.height, this.pipes[i].width, images.pipetop.height);
-		}else{
-			this.ctx.drawImage(images.pipebottom, this.pipes[i].x, this.pipes[i].y, this.pipes[i].width, images.pipetop.height);
-		}
+		var pipe = this.pipes[i];
+		var sprite = pipe.y == 0 ? images.pipetop : images.pipebottom;
+		var height = Math.min(pipe.height, this.height - pipe.y);
+		// Crop inside the existing collision rectangle; never extend into the gap.
+		this.ctx.drawImage(sprite, 0, pipe.y == 0 ? sprite.height - height : 0,
+			pipe.width, height, pipe.x, pipe.y, pipe.width, height);
 	}
 
-	this.ctx.fillStyle = "#FFC600";
-	this.ctx.strokeStyle = "#CE9E00";
 	for(var i in this.birds){
 		if(this.birds[i].alive){
 			this.ctx.save(); 
@@ -264,12 +292,18 @@ Game.prototype.display = function(){
 		}
 	}
 
-	this.ctx.fillStyle = "white";
-	this.ctx.font="20px Oswald, sans-serif";
-	this.ctx.fillText("Score : "+ this.score, 10, 25);
-	this.ctx.fillText("Max Score : "+this.maxScore, 10, 50);
-	this.ctx.fillText("Generation : "+this.generation, 10, 75);
-	this.ctx.fillText("Alive : "+this.alives+" / "+Neuvol.options.population, 10, 100);
+	var values = {
+		score:this.score,
+		maxScore:this.maxScore,
+		generation:this.generation,
+		alive:this.alives + " / " + Neuvol.options.population,
+		status:this.paused ? "● SIMULATION PAUSED" : "● SIMULATION ACTIVE"
+	};
+	for(var key in values){
+		if(this.telemetry[key] && this.telemetry[key].textContent != values[key]){
+			this.telemetry[key].textContent = values[key];
+		}
+	}
 
 	var self = this;
 	requestAnimationFrame(function(){
@@ -278,12 +312,6 @@ Game.prototype.display = function(){
 }
 
 window.onload = function(){
-	var sprites = {
-		bird:"./img/bird.png",
-		background:"./img/background.png",
-		pipetop:"./img/pipetop.png",
-		pipebottom:"./img/pipebottom.png"
-	}
 
 	var start = function(){
 		Neuvol = new Neuroevolution({
@@ -294,12 +322,21 @@ window.onload = function(){
 		game.start();
 		game.update();
 		game.display();
+		var pauseToggle = document.querySelector("#pause-toggle");
+		pauseToggle.addEventListener("click", function(){
+			if(game.paused){
+				game.resume();
+			}else{
+				game.pause();
+			}
+			pauseToggle.textContent = game.paused ? "Resume" : "Pause";
+			pauseToggle.setAttribute("aria-pressed", game.paused ? "true" : "false");
+		});
+		pauseToggle.disabled = false;
 	}
 
 
-	loadImages(sprites, function(imgs){
-		images = imgs;
-		start();
-	})
+	images = prepareImages();
+	start();
 
 }

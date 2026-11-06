@@ -1,19 +1,38 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<title>NeuroEvolution : Flappy Bird</title>
-	<link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet' type='text/css'>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Orbital Flight — Neuroevolution</title>
+	<link href="style.css" rel="stylesheet">
 </head>
 <body>
-	<canvas id="flappy" width="500" height="512"></canvas> <br/>
-	<button onclick="speed(60)">x1</button> 
-	<button onclick="speed(120)">x2</button> 
-	<button onclick="speed(180)">x3</button> 
-	<button onclick="speed(300)">x5</button> 
-	<button onclick="speed(0)">MAX</button> 
-	<br/>
-	<a href="http://github.com/xviniette/FlappyLearning">GitHub Repository</a>
-	<script src = "Neuroevolution.js"></script>
-	<script src = "game.js"></script>
+	<main class="cockpit">
+		<header class="masthead">
+			<div><p class="eyebrow">CITY IN SPACE / FLIGHT LAB</p><h1>Orbital Flight</h1></div>
+			<span class="badge">NEURAL<br>PILOT / 50</span>
+		</header>
+		<dl class="telemetry" aria-label="Flight telemetry">
+			<div><dt>Score</dt><dd id="score">0</dd></div>
+			<div><dt>Max score</dt><dd id="max-score">0</dd></div>
+			<div><dt>Generation</dt><dd id="generation">0</dd></div>
+			<div><dt>Alive</dt><dd id="alive">50 / 50</dd></div>
+		</dl>
+		<div class="viewport"><canvas id="flappy" width="500" height="512" aria-label="Neural pilots navigating golden orbital towers">Your browser needs canvas support to display the flight simulation.</canvas></div>
+		<div class="flight-status"><span id="flight-status">● SIMULATION ACTIVE</span><span>SECTOR 07 / ORBITAL CITY</span></div>
+		<p class="controls-label" id="speed-label">SIMULATION SPEED</p>
+		<div class="controls" role="group" aria-labelledby="speed-label">
+			<button class="control-button" data-fps="60" onclick="speed(60)" aria-pressed="true">x1</button>
+			<button class="control-button" data-fps="120" onclick="speed(120)" aria-pressed="false">x2</button>
+			<button class="control-button" data-fps="180" onclick="speed(180)" aria-pressed="false">x3</button>
+			<button class="control-button" data-fps="300" onclick="speed(300)" aria-pressed="false">x5</button>
+			<button class="control-button" data-fps="0" onclick="speed(0)" aria-pressed="false">MAX</button>
+		</div>
+		<div class="pause-controls"><button id="pause-toggle" class="control-button" aria-pressed="false" disabled>Pause</button></div>
+		<footer><span>50 PILOTS · EVOLVE · REPEAT</span><a href="http://github.com/xviniette/FlappyLearning">GitHub Repository ↗</a></footer>
+	</main>
+	<script src="Neuroevolution.js"></script>
+	<script src="art.js"></script>
+	<script src="game.js"></script>
 </body>
 </html>
