@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>FlappyLearning browser regression checks</title>
+<style>body{font:16px system-ui;margin:24px;background:#101c23;color:#eee}pre{white-space:pre-wrap}iframe{width:600px;height:900px;border:1px solid #888}</style>
+<h1>Combined feature regression checks</h1>
+<p>This isolated game instance tests the assets, controls, paused state, rendering and learning. Allow about 15 seconds.</p>
+<pre id="result" role="status">Running…</pre>
+<iframe src="../index.html" title="Game under test"></iframe>
+<script>
+const frame = document.querySelector('iframe');
+frame.onload = async () => {
+	const w = frame.contentWindow, checks = [], result = document.querySelector('#result');
+	const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+	const until = async predicate => {
+		const deadline = Date.now() + 10000;
+		while (!predicate()) { if (Date.now() > deadline) throw Error('Timed out waiting for game progress'); await wait(20); }
+	};
+	const assert = (ok, label) => { if (!ok) throw Error(label); checks.push(label); };
+	const snapshot = () => JSON.stringify({ game: w.game, learning: w.Neuvol },
+		(key, value) => ['canvas','ctx','paused','updateEpoch','updateTimer','updateScheduled'].includes(key) ? undefined : value);
+	try {
+		await until(() => w.game && !w.document.querySelector('#pause-resume').disabled);
+		assert(!!w.game, 'Game initialized');
+		assert(Object.keys(w.images).length === 5 && Object.values(w.images).every(i => i.complete && i.naturalWidth > 0), 'All five sci-fi assets loaded');
+		assert(w.game.width === 500 && w.game.height === 512, 'Logical canvas is 500x512');
+		const button = w.document.querySelector('#pause-resume');
+		assert(button.tagName === 'BUTTON' && !button.disabled, 'Native Pause/Resume enabled');
+		const speedButton = fps => w.document.querySelector('button[onclick="speed(' + fps + ')"]');
+		for (const fps of [60, 0]) {
+			speedButton(fps).click(); const offset = w.game.backgroundx;
+			await until(() => w.game.backgroundx > offset); button.click();
+			await new Promise(resolve => w.requestAnimationFrame(() => w.requestAnimationFrame(resolve)));
+			const before = snapshot(), pixels = w.game.canvas.toDataURL();
+			await wait(5000); // Observe an actual pause, including pending callbacks and animation frames.
+			assert(snapshot() === before, 'Five-second simulation/learning freeze at ' + fps + ' FPS');
+			assert(w.game.canvas.toDataURL() === pixels, 'Frozen sci-fi terrain, bird, obstacles and HUD at ' + fps + ' FPS');
+			for (const speed of [60, 120, 180, 300, 0]) {
+				speedButton(speed).click();
+				assert(w.FPS === speed && w.game.paused && snapshot() === before, 'Select speed ' + speed + ' while paused');
+			}
+			speedButton(60).click(); const birds = w.game.birds, networks = w.game.gen;
+			button.click();
+			assert(w.game.birds === birds && w.game.gen === networks && snapshot() === before, 'Resume same state without immediate catch-up');
+			await until(() => snapshot() !== before); assert(true, 'Simulation advances after resume');
+		}
+		for (const fps of [60, 120, 180, 300, 0]) {
+			speedButton(fps).click(); const offset = w.game.backgroundx;
+			await until(() => w.game.backgroundx > offset);
+			assert(w.FPS === fps, 'Running speed control ' + fps);
+		}
+		for (let i = 0; i < 200; i++) { button.click(); button.click(); }
+		button.click(); const frozen = snapshot(); await wait(100);
+		assert(snapshot() === frozen, 'Stable pause after 200 rapid MAX toggles');
+		const generation = w.game.generation; button.click();
+		await until(() => w.game.generation > generation);
+		assert(true, 'Learning reaches another generation after resume'); button.click();
+		result.textContent = 'PASS: ' + checks.length + ' checks\n' + checks.join('\n');
+	} catch (error) {
+		if (w.game && !w.game.paused) w.document.querySelector('#pause-resume').click();
+		result.textContent = 'FAIL: ' + error.message + '\nCompleted: ' + checks.join('\n');
+	}
+};
+</script>
+</html>

@@ -9,7 +9,7 @@
 
 ## Running and verification
 - From the repository root, run `python3 -m http.server 8000`, then open `http://localhost:8000`.
-- No automated test suite or lint configuration is present. For behavior changes, check that assets load, birds and pipes render, generations advance, and every speed control works without browser console errors.
+- Run `node tests/regression.cjs` for deterministic regressions and open `/tests/browser.html` on the local server for combined browser checks. No lint configuration is present. Also check keyboard focus, rendered assets, and browser console errors manually.
 - Learning is randomized; do not rely on an exact score or generation count for verification.
 - Report which checks were actually performed and any checks that could not be run.
 

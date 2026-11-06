@@ -34,3 +34,12 @@ ne.networkScore(generation[x], <score = 0>);
 ```
 
 You can see the NeuroEvolution integration in Flappy Bird in [Game.js](http://github.com/xviniette/FlappyLearning/blob/gh-pages/game.js).
+
+
+### Local verification
+
+Run `node tests/regression.cjs` (no packages required) for deterministic pause/resume, speed, callback, learning and collision regression checks.
+
+Serve the repository with `python3 -m http.server 8000` and open `http://localhost:8000/tests/browser.html`. The browser harness checks the combined assets, controls, five-second state/render freezes at x1 and MAX, same-state resume and generation progression. It reports PASS or FAIL; it does not replace manual checks of the game page.
+
+On `http://localhost:8000`, use Tab to reach Pause/Resume, check the visible focus outline, and toggle it with Enter and Space. Inspect the scene and HUD, try every speed, and check the browser console. Cross-browser and long-duration performance checks remain manual.
