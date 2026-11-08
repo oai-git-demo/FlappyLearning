@@ -35,6 +35,10 @@ var speed = function(fps){
 		game.cancelUpdate();
 		game.scheduleUpdate();
 	}
+	var buttons = document.querySelectorAll("[data-speed]");
+	for(var i = 0; i < buttons.length; i++){
+		buttons[i].setAttribute("aria-pressed", Number(buttons[i].getAttribute("data-speed")) === FPS ? "true" : "false");
+	}
 }
 
 var loadImages = function(sources, callback){
@@ -141,6 +145,13 @@ var Game = function(){
 	this.backgroundSpeed = 0.5;
 	this.backgroundx = 0;
 	this.maxScore = 0;
+	this.hud = {
+		score: document.getElementById("score"),
+		maxScore: document.getElementById("max-score"),
+		generation: document.getElementById("generation"),
+		alive: document.getElementById("alive"),
+		population: document.getElementById("population")
+	};
 	this.paused = false;
 	this.updateTimeout = null;
 	this.updatePending = false;
@@ -187,6 +198,7 @@ Game.prototype.setPaused = function(paused){
 	if(!paused){
 		this.scheduleUpdate();
 	}
+
 }
 
 Game.prototype.start = function(){
@@ -307,12 +319,11 @@ Game.prototype.display = function(){
 		}
 	}
 
-	this.ctx.fillStyle = "white";
-	this.ctx.font="20px Oswald, sans-serif";
-	this.ctx.fillText("Score : "+ this.score, 10, 25);
-	this.ctx.fillText("Max Score : "+this.maxScore, 10, 50);
-	this.ctx.fillText("Generation : "+this.generation, 10, 75);
-	this.ctx.fillText("Alive : "+this.alives+" / "+Neuvol.options.population, 10, 100);
+	this.hud.score.textContent = this.score;
+	this.hud.maxScore.textContent = this.maxScore;
+	this.hud.generation.textContent = this.generation;
+	this.hud.alive.textContent = this.alives;
+	this.hud.population.textContent = Neuvol.options.population;
 
 	var self = this;
 	requestAnimationFrame(function(){

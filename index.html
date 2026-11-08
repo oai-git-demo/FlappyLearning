@@ -1,23 +1,42 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<title>NeuroEvolution : Flappy Bird</title>
-	<link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet' type='text/css'>
-	<style>
-		#pause-toggle:focus { outline: 3px solid #005fcc; outline-offset: 2px; }
-	</style>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Orbital Learning — Flappy Neuroevolution</title>
+	<link rel="stylesheet" href="style.css">
 </head>
 <body>
-	<canvas id="flappy" width="500" height="512"></canvas> <br/>
-	<button onclick="speed(60)">x1</button> 
-	<button onclick="speed(120)">x2</button> 
-	<button onclick="speed(180)">x3</button> 
-	<button onclick="speed(300)">x5</button> 
-	<button onclick="speed(0)">MAX</button> 
-	<button type="button" id="pause-toggle" disabled>Pause</button>
-	<br/>
-	<a href="http://github.com/xviniette/FlappyLearning">GitHub Repository</a>
-	<script src = "Neuroevolution.js"></script>
-	<script src = "game.js"></script>
+	<main class="cockpit">
+		<header class="mission-header">
+			<p class="eyebrow">Autonomous flight lab / 01</p>
+			<h1>Orbital Learning</h1>
+			<p class="subtitle">50 pilots. One evolving flight path.</p>
+		</header>
+		<section class="flight-deck" aria-label="Live training simulation">
+			<dl class="telemetry" aria-label="Training statistics">
+				<div><dt>Score</dt><dd id="score">0</dd></div>
+				<div><dt>Best score</dt><dd id="max-score">0</dd></div>
+				<div><dt>Generation</dt><dd id="generation">0</dd></div>
+				<div><dt>Alive</dt><dd><span id="alive">50</span><span class="population"> / <span id="population">50</span></span></dd></div>
+			</dl>
+			<div class="viewport"><canvas id="flappy" width="500" height="512" role="img" aria-label="Robotic birds learn to fly through orbital gates. Current training statistics appear above.">Your browser needs Canvas support to display the simulation.</canvas></div>
+			<div class="control-panel">
+				<p class="control-label" id="speed-label">Simulation speed</p>
+				<div class="controls" role="group" aria-labelledby="speed-label">
+					<button type="button" data-speed="60" aria-pressed="true" onclick="speed(60)">x1</button>
+					<button type="button" data-speed="120" aria-pressed="false" onclick="speed(120)">x2</button>
+					<button type="button" data-speed="180" aria-pressed="false" onclick="speed(180)">x3</button>
+					<button type="button" data-speed="300" aria-pressed="false" onclick="speed(300)">x5</button>
+					<button type="button" data-speed="0" aria-pressed="false" onclick="speed(0)">MAX</button>
+				</div>
+				<div class="playback-controls"><button type="button" id="pause-toggle" disabled>Pause</button></div>
+				<p class="hint">Watch the flock adapt. Score measures survival time.</p>
+			</div>
+		</section>
+		<footer><span>Neuroevolution in orbit</span><a href="https://github.com/xviniette/FlappyLearning">GitHub Repository <span aria-hidden="true">↗</span></a></footer>
+	</main>
+	<script src="Neuroevolution.js"></script>
+	<script src="game.js"></script>
 </body>
 </html>
