@@ -1,0 +1,44 @@
+:root {
+	color-scheme: dark;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	color: #F0F6FF;
+	background: #07111F;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 36px 16px; }
+.cockpit { width: 100%; max-width: 550px; margin: 0 auto; }
+.mission-header { margin-bottom: 22px; }
+.eyebrow, .control-label { color: #56E0EF; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.eyebrow { margin: 0 0 10px; }
+h1 { margin: 0; font-size: clamp(24px, 6vw, 32px); letter-spacing: -.05em; line-height: 1.2; }
+.subtitle { margin: 10px 0 0; color: #B6C6DA; font-size: 12px; line-height: 1.6; }
+.flight-deck { padding: 16px 24px 0; border: 1px solid #36516C; border-top: 2px solid #56E0EF; border-radius: 12px; background: #14263D; box-shadow: 0 12px 40px #0004; overflow: hidden; }
+.telemetry { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 16px; }
+.telemetry dt { color: #B6C6DA; font-size: 10px; line-height: 1.5; }
+.telemetry dd { color: #F0F6FF; margin: 4px 0 0; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.telemetry div:first-child dd { color: #56E0EF; }
+.population { color: #B6C6DA; font-size: 11px; font-weight: 400; white-space: nowrap; }
+.viewport { border: 1px solid #36516C; background: #07111F; }
+canvas { display: block; width: 100%; height: auto; aspect-ratio: 500 / 512; }
+.control-panel { padding: 18px 0; }
+.control-label { margin: 0 0 10px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; }
+button, #pause-toggle { min-width: 52px; min-height: 44px; padding: 10px 14px; border: 1px solid #8DA6C2; border-radius: 6px; background: #07111F; color: #F0F6FF; font: 700 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; cursor: pointer; }
+button:hover, #pause-toggle:hover { border-color: #56E0EF; background: #203A52; }
+button[aria-pressed="true"] { background: #56E0EF; color: #07111F; border-color: #56E0EF; box-shadow: 0 0 14px #56E0EF20; }
+button:focus-visible, #pause-toggle:focus-visible, a:focus-visible { outline: 3px solid #FFC857; outline-offset: 4px; }
+.hint { margin: 14px 0 0; color: #B6C6DA; font-size: 11px; line-height: 1.6; }
+footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 18px 0; color: #B6C6DA; font-size: 10px; line-height: 1.6; }
+a { color: #56E0EF; text-underline-offset: 4px; }
+@media (max-width: 420px) {
+	body { padding: 24px 12px; }
+	.flight-deck { padding: 14px 12px 0; }
+	.telemetry { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; }
+	.telemetry dt { font-size: 11px; }
+	.telemetry dd { font-size: 21px; }
+	.controls { gap: 7px; }
+	button, #pause-toggle { flex: 1 0 44px; min-width: 44px; padding: 10px 8px; }
+}
+
+.playback-controls { margin-top: 12px; }
+button:disabled { opacity: .55; cursor: wait; }

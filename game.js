@@ -31,6 +31,14 @@ var images = {};
 
 var speed = function(fps){
 	FPS = parseInt(fps);
+	if(game && !game.paused){
+		game.cancelUpdate();
+		game.scheduleUpdate();
+	}
+	var buttons = document.querySelectorAll("[data-speed]");
+	for(var i = 0; i < buttons.length; i++){
+		buttons[i].setAttribute("aria-pressed", Number(buttons[i].getAttribute("data-speed")) === FPS ? "true" : "false");
+	}
 }
 
 var loadImages = function(sources, callback){
@@ -137,6 +145,60 @@ var Game = function(){
 	this.backgroundSpeed = 0.5;
 	this.backgroundx = 0;
 	this.maxScore = 0;
+	this.hud = {
+		score: document.getElementById("score"),
+		maxScore: document.getElementById("max-score"),
+		generation: document.getElementById("generation"),
+		alive: document.getElementById("alive"),
+		population: document.getElementById("population")
+	};
+	this.paused = false;
+	this.updateTimeout = null;
+	this.updatePending = false;
+	this.updateEpoch = 0;
+}
+
+Game.prototype.cancelUpdate = function(){
+	clearTimeout(this.updateTimeout);
+	this.updateTimeout = null;
+	this.updatePending = false;
+	this.updateEpoch++;
+}
+
+Game.prototype.scheduleUpdate = function(){
+	if(this.paused || this.updatePending){
+		return;
+	}
+	var self = this;
+	var epoch = this.updateEpoch;
+	this.updatePending = true;
+	var callback = function(){
+		// MAX callbacks cannot be removed from the message queue.
+		if(self.paused || epoch != self.updateEpoch){
+			return;
+		}
+		self.updateTimeout = null;
+		self.updatePending = false;
+		self.update();
+	};
+	if(FPS == 0){
+		setZeroTimeout(callback);
+	}else{
+		this.updateTimeout = setTimeout(callback, 1000/FPS);
+	}
+}
+
+Game.prototype.setPaused = function(paused){
+	if(this.paused == paused){
+		return;
+	}
+	this.paused = paused;
+	this.cancelUpdate();
+	document.querySelector("#pause-toggle").textContent = paused ? "Resume" : "Pause";
+	if(!paused){
+		this.scheduleUpdate();
+	}
+
 }
 
 Game.prototype.start = function(){
@@ -155,6 +217,9 @@ Game.prototype.start = function(){
 }
 
 Game.prototype.update = function(){
+	if(this.paused){
+		return;
+	}
 	this.backgroundx += this.backgroundSpeed;
 	var nextHoll = 0;
 	if(this.birds.length > 0){
@@ -215,17 +280,7 @@ Game.prototype.update = function(){
 
 	this.score++;
 	this.maxScore = (this.score > this.maxScore) ? this.score : this.maxScore;
-	var self = this;
-
-	if(FPS == 0){
-		setZeroTimeout(function(){
-			self.update();
-		});
-	}else{
-		setTimeout(function(){
-			self.update();
-		}, 1000/FPS);
-	}
+	this.scheduleUpdate();
 }
 
 
@@ -264,12 +319,11 @@ Game.prototype.display = function(){
 		}
 	}
 
-	this.ctx.fillStyle = "white";
-	this.ctx.font="20px Oswald, sans-serif";
-	this.ctx.fillText("Score : "+ this.score, 10, 25);
-	this.ctx.fillText("Max Score : "+this.maxScore, 10, 50);
-	this.ctx.fillText("Generation : "+this.generation, 10, 75);
-	this.ctx.fillText("Alive : "+this.alives+" / "+Neuvol.options.population, 10, 100);
+	this.hud.score.textContent = this.score;
+	this.hud.maxScore.textContent = this.maxScore;
+	this.hud.generation.textContent = this.generation;
+	this.hud.alive.textContent = this.alives;
+	this.hud.population.textContent = Neuvol.options.population;
 
 	var self = this;
 	requestAnimationFrame(function(){
@@ -294,6 +348,11 @@ window.onload = function(){
 		game.start();
 		game.update();
 		game.display();
+		var pauseToggle = document.querySelector("#pause-toggle");
+		pauseToggle.addEventListener("click", function(){
+			game.setPaused(!game.paused);
+		});
+		pauseToggle.disabled = false;
 	}
 
 
