@@ -137,6 +137,9 @@ var Game = function(){
 	this.backgroundSpeed = 0.5;
 	this.backgroundx = 0;
 	this.maxScore = 0;
+	this.paused = false;
+	this.updateTimeout = null;
+	this.scheduleToken = 0;
 }
 
 Game.prototype.start = function(){
@@ -154,7 +157,44 @@ Game.prototype.start = function(){
 	this.alives = this.birds.length;
 }
 
+// Only the newest scheduled callback may advance the simulation. MAX callbacks
+// cannot be cancelled, so the token also invalidates queued postMessage work.
+Game.prototype.scheduleUpdate = function(){
+	clearTimeout(this.updateTimeout);
+	this.updateTimeout = null;
+	var token = ++this.scheduleToken;
+	if(this.paused){
+		return;
+	}
+	var self = this;
+	var next = function(){
+		if(token != self.scheduleToken || self.paused){
+			return;
+		}
+		self.updateTimeout = null;
+		self.update();
+	};
+	if(FPS == 0){
+		setZeroTimeout(next);
+	}else{
+		this.updateTimeout = setTimeout(next, 1000/FPS);
+	}
+}
+
+Game.prototype.setPaused = function(paused){
+	if(this.paused == paused){
+		return;
+	}
+	this.paused = paused;
+	this.scheduleUpdate();
+	document.querySelector("#pause-resume").textContent = paused ? "Resume" : "Pause";
+	document.querySelector("#simulation-status").textContent = paused ? "SIMULATION PAUSED" : "SIMULATION ONLINE";
+}
+
 Game.prototype.update = function(){
+	if(this.paused){
+		return;
+	}
 	this.backgroundx += this.backgroundSpeed;
 	var nextHoll = 0;
 	if(this.birds.length > 0){
@@ -215,17 +255,7 @@ Game.prototype.update = function(){
 
 	this.score++;
 	this.maxScore = (this.score > this.maxScore) ? this.score : this.maxScore;
-	var self = this;
-
-	if(FPS == 0){
-		setZeroTimeout(function(){
-			self.update();
-		});
-	}else{
-		setTimeout(function(){
-			self.update();
-		}, 1000/FPS);
-	}
+	this.scheduleUpdate();
 }
 
 
@@ -239,37 +269,65 @@ Game.prototype.isItEnd = function(){
 }
 
 Game.prototype.display = function(){
-	this.ctx.clearRect(0, 0, this.width, this.height);
-	for(var i = 0; i < Math.ceil(this.width / images.background.width) + 1; i++){
-		this.ctx.drawImage(images.background, i * images.background.width - Math.floor(this.backgroundx%images.background.width), 0)
+	var ctx = this.ctx;
+	ctx.imageSmoothingEnabled = false;
+	ctx.clearRect(0, 0, this.width, this.height);
+	// All scenery uses simulation-owned distance: rendering never advances time.
+	var offset = Math.floor(this.backgroundx * 0.3) % images.background.width;
+	for(var x = -offset; x < this.width; x += images.background.width){
+		ctx.drawImage(images.background, x, 0);
+	}
+	// A nearer station layer travels faster than the distant starfield.
+	var stationOffset = Math.floor(this.backgroundx * 0.7) % images.background.width;
+	for(var x = -stationOffset; x < this.width; x += images.background.width){
+		ctx.drawImage(images.background, 0, 448, images.background.width, 64,
+			x, 476, images.background.width, 36);
 	}
 
 	for(var i in this.pipes){
-		if(i%2 == 0){
-			this.ctx.drawImage(images.pipetop, this.pipes[i].x, this.pipes[i].y + this.pipes[i].height - images.pipetop.height, this.pipes[i].width, images.pipetop.height);
-		}else{
-			this.ctx.drawImage(images.pipebottom, this.pipes[i].x, this.pipes[i].y, this.pipes[i].width, images.pipetop.height);
+		var pipe = this.pipes[i];
+		var sprite = i % 2 == 0 ? images.pipetop : images.pipebottom;
+		// Clip tiled metal to the exact collision rectangle; no external glow.
+		ctx.save();
+		ctx.beginPath();
+		ctx.rect(pipe.x, pipe.y, pipe.width, pipe.height);
+		ctx.clip();
+		var end = Math.min(pipe.y + pipe.height, this.height);
+		for(var y = pipe.y; y < end; y += sprite.height){
+			ctx.drawImage(sprite, pipe.x, y, pipe.width, sprite.height);
 		}
+		// Flush cap makes the gap's exact collision edge easy to read.
+		var capY = i % 2 == 0 ? pipe.y + pipe.height - 8 : pipe.y;
+		ctx.fillStyle = "#284255";
+		ctx.fillRect(pipe.x, capY, pipe.width, 8);
+		ctx.fillStyle = "#55DDF2";
+		ctx.fillRect(pipe.x + 3, i % 2 == 0 ? capY + 5 : capY + 1, pipe.width - 6, 2);
+		ctx.restore();
 	}
 
-	this.ctx.fillStyle = "#FFC600";
-	this.ctx.strokeStyle = "#CE9E00";
 	for(var i in this.birds){
 		if(this.birds[i].alive){
-			this.ctx.save(); 
-			this.ctx.translate(this.birds[i].x + this.birds[i].width/2, this.birds[i].y + this.birds[i].height/2);
-			this.ctx.rotate(Math.PI/2 * this.birds[i].gravity/20);
-			this.ctx.drawImage(images.bird, -this.birds[i].width/2, -this.birds[i].height/2, this.birds[i].width, this.birds[i].height);
-			this.ctx.restore();
+			var bird = this.birds[i];
+			// Keep the sprite within the unchanged, axis-aligned 40 x 30 hitbox.
+			ctx.drawImage(images.bird, bird.x, bird.y, bird.width, bird.height);
 		}
 	}
 
-	this.ctx.fillStyle = "white";
-	this.ctx.font="20px Oswald, sans-serif";
-	this.ctx.fillText("Score : "+ this.score, 10, 25);
-	this.ctx.fillText("Max Score : "+this.maxScore, 10, 50);
-	this.ctx.fillText("Generation : "+this.generation, 10, 75);
-	this.ctx.fillText("Alive : "+this.alives+" / "+Neuvol.options.population, 10, 100);
+	ctx.fillStyle = "#07111F";
+	ctx.fillRect(8, 8, this.width - 16, 58);
+	ctx.strokeStyle = "#284255";
+	ctx.strokeRect(8.5, 8.5, this.width - 17, 57);
+	var labels = ["SCORE", "BEST", "GENERATION", "ALIVE"];
+	var values = [this.score, this.maxScore, this.generation, this.alives + "/" + Neuvol.options.population];
+	for(var i = 0; i < labels.length; i++){
+		var x = 20 + i * 121;
+		ctx.fillStyle = "#9BB3C6";
+		ctx.font = "12px ui-monospace, monospace";
+		ctx.fillText(labels[i], x, 26);
+		ctx.fillStyle = i == 3 ? "#55DDF2" : "#E6F5FF";
+		ctx.font = "bold 22px ui-monospace, monospace";
+		ctx.fillText(values[i], x, 51, 106);
+	}
 
 	var self = this;
 	requestAnimationFrame(function(){
@@ -292,6 +350,11 @@ window.onload = function(){
 		});
 		game = new Game();
 		game.start();
+		var pauseButton = document.querySelector("#pause-resume");
+		pauseButton.addEventListener("click", function(){
+			game.setPaused(!game.paused);
+		});
+		pauseButton.disabled = false;
 		game.update();
 		game.display();
 	}

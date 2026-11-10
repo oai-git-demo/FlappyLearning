@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Pause/resume regression checks</title>
+<style>pre { white-space: pre-wrap; }</style>
+<h1>Pause/resume regression checks</h1>
+<p>Serve the repository and open this page. Checks use the real game in the frame below.</p>
+<pre id="results">Running…</pre>
+<iframe title="Game under test" src="../index.html" width="540" height="620"></iframe>
+<script>
+(async function(){
+	var results = document.querySelector('#results');
+	var frame = document.querySelector('iframe');
+	var lines = [];
+	var sleep = function(ms){ return new Promise(function(resolve){ setTimeout(resolve, ms); }); };
+	var check = function(ok, label){
+		if(!ok){ throw new Error(label); }
+		lines.push('PASS: ' + label);
+		results.textContent = lines.join('\n');
+	};
+	try {
+		for(var i = 0; i < 100 && !frame.contentWindow.game; i++){ await sleep(50); }
+		var w = frame.contentWindow;
+		var game = w.game;
+		var button = w.document.querySelector('#pause-resume');
+		check(!!game && !button.disabled, 'Control enabled after initialization');
+		var calls = {compute:0, fitness:0, generation:0, updates:0, frames:0};
+		var wrap = function(object, name, counter){
+			var original = object[name];
+			object[name] = function(){ calls[counter]++; return original.apply(this, arguments); };
+		};
+		wrap(w.Neuvol, 'networkScore', 'fitness');
+		wrap(w.Neuvol, 'nextGeneration', 'generation');
+		wrap(game, 'update', 'updates');
+		wrap(game, 'display', 'frames');
+		// Snapshot all serializable evolution data as well as simulation state.
+		var snapshot = function(){
+			return JSON.stringify({birds:game.birds, pipes:game.pipes, gen:game.gen,
+				interval:game.interval, score:game.score, maxScore:game.maxScore,
+				backgroundx:game.backgroundx, alives:game.alives, generation:game.generation,
+				evolution:w.Neuvol});
+		};
+		var pauseAndCheck = async function(label){
+			button.click();
+			check(game.paused && button.textContent == 'Resume', label + ' enters pause');
+			var before = snapshot();
+			await new Promise(function(resolve){ w.requestAnimationFrame(resolve); });
+			var pixels = game.canvas.toDataURL();
+			var counters = JSON.stringify([calls.compute,calls.fitness,calls.generation]);
+			var frames = calls.frames;
+			await sleep(150);
+			check(snapshot() == before, label + ' freezes complete simulation/evolution snapshot');
+			check(JSON.stringify([calls.compute,calls.fitness,calls.generation]) == counters,
+				label + ' runs no network evaluation, fitness or generation work');
+			check(calls.frames > frames, label + ' keeps rendering');
+			check(game.canvas.toDataURL() == pixels, label + ' freezes sci-fi sprites, telemetry and parallax');
+			check(w.document.querySelector('#simulation-status').textContent == 'SIMULATION PAUSED', label + ' announces paused status');
+			return before;
+		};
+		game.gen.forEach(function(network){ wrap(network, 'compute', 'compute'); });
+		w.speed(60);
+		await pauseAndCheck('x1');
+		var birds = game.birds, networks = game.gen, before = snapshot();
+		button.click();
+		check(game.birds === birds && game.gen === networks && snapshot() == before,
+			'Resume preserves exact state and network identities before next tick');
+		await sleep(60);
+		check(snapshot() != before, 'Resume advances simulation');
+		w.speed(0);
+		await sleep(40);
+		await pauseAndCheck('MAX');
+		before = snapshot();
+		var speedButtons = Array.from(w.document.querySelectorAll('[data-fps]'));
+		speedButtons.forEach(function(control){ control.click(); });
+		speedButtons[0].click();
+		check(snapshot() == before && game.paused, 'Speed changes while paused preserve state');
+		var delays = [], callbacks = [], timeout = w.setTimeout;
+		w.setTimeout = function(fn, ms){ delays.push(ms); callbacks.push(fn); return timeout(fn, ms); };
+		button.click();
+		check(delays[0] == 1000/60, 'Resume uses speed selected while paused');
+		var staleTimer = callbacks[0];
+		button.click();
+		var zeroCallbacks = [], zeroTimeout = w.setZeroTimeout;
+		w.setZeroTimeout = function(fn){ zeroCallbacks.push(fn); zeroTimeout(fn); };
+		speedButtons[4].click();
+		button.click();
+		var staleZero = zeroCallbacks[0];
+		button.click();
+		speedButtons[0].click();
+		button.click();
+		before = snapshot();
+		staleTimer();
+		staleZero();
+		check(snapshot() == before, 'Cancelled timer and queued MAX callbacks cannot update after resume');
+		for(var j = 0; j < 100; j++){
+			button.click();
+			w.speed(j % 2 ? 0 : 60);
+			button.click();
+		}
+		button.click();
+		w.speed(60);
+		button.click();
+		var updates = calls.updates;
+		await sleep(500);
+		var ticks = calls.updates - updates;
+		check(ticks >= 10 && ticks <= 40, 'Rapid x1/MAX toggles retain one update chain (' + ticks + ' ticks/500ms)');
+		button.click();
+		// Preserve valid evolution history: score every living bird except one.
+		// Already-dead birds have already been scored and must not be revived.
+		var lastIndex = game.birds.findIndex(function(bird){ return bird.alive; });
+		game.birds.forEach(function(bird, index){
+			if(bird.alive && index != lastIndex){
+				w.Neuvol.networkScore(game.gen[index], game.score);
+				bird.alive = false;
+			}
+		});
+		var last = game.birds[lastIndex];
+		last.y = game.height + 100;
+		game.alives = 1;
+		before = snapshot();
+		var generation = game.generation, fitness = calls.fitness;
+		await sleep(100);
+		check(snapshot() == before, 'Pause at generation boundary prevents turnover');
+		game.update();
+		check(snapshot() == before, 'Direct update while paused is also gated');
+		button.click();
+		await sleep(25);
+		button.click();
+		check(game.generation == generation + 1 && calls.fitness == fitness + 1,
+			'Resume scores last bird and advances generation exactly once');
+		results.textContent = lines.join('\n') + '\nALL CHECKS PASSED';
+	}catch(error){
+		results.textContent = lines.join('\n') + '\nFAIL: ' + error.stack;
+		console.error(error);
+	}
+})();
+</script>
+</html>

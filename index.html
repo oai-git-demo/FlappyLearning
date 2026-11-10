@@ -1,19 +1,100 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<title>NeuroEvolution : Flappy Bird</title>
-	<link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet' type='text/css'>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="theme-color" content="#07111F">
+	<title>Orbital Flight Lab · Neuroevolution</title>
+	<link rel="icon" href="data:,">
+	<style>
+		:root { color-scheme: dark; --navy: #07111F; --panel: #0D1C2C; --line: #284255; --text: #E6F5FF; --muted: #9BB3C6; --cyan: #55DDF2; --amber: #FFCA66; }
+		* { box-sizing: border-box; }
+		body { margin: 0; background: var(--navy); color: var(--text); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; line-height: 1.6; }
+		main { width: min(100% - 48px, 930px); margin: 48px auto 24px; }
+		.eyebrow { color: var(--cyan); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; margin: 0 0 10px; }
+		h1 { font-family: system-ui, sans-serif; font-size: clamp(27px, 5vw, 40px); line-height: 1.15; letter-spacing: -.035em; margin: 0; font-weight: 650; }
+		.subtitle { color: var(--muted); font-size: 13px; margin: 14px 0 28px; }
+		.workspace { display: grid; grid-template-columns: minmax(0, 516px) minmax(210px, 1fr); gap: 30px; align-items: start; }
+		.console { background: var(--panel); border: 1px solid var(--line); padding: 7px; min-width: 0; }
+		.console-bar { display: flex; justify-content: space-between; gap: 8px; padding: 6px 6px 12px; font-size: 10px; letter-spacing: .09em; color: var(--muted); }
+		.status { color: var(--cyan); }
+		canvas { display: block; width: 100%; height: auto; aspect-ratio: 500 / 512; background: var(--navy); image-rendering: pixelated; }
+		.controls { border-top: 1px solid var(--line); padding: 14px 6px 8px; }
+		.controls-label { display: block; font-size: 10px; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 9px; }
+		.speed-buttons { display: flex; flex-wrap: wrap; gap: 7px; }
+		button { font: inherit; font-size: 12px; min-width: 49px; min-height: 40px; padding: 8px 12px; border: 1px solid #39576A; border-radius: 3px; color: var(--text); background: #102435; cursor: pointer; }
+		button:hover { border-color: var(--cyan); background: #193749; }
+		button[aria-pressed="true"] { color: var(--navy); background: var(--cyan); border-color: var(--cyan); font-weight: 700; }
+		button:focus-visible, a:focus-visible { outline: 3px solid var(--amber); outline-offset: 4px; }
+		#pause-resume { margin-top: 12px; min-width: 106px; }
+		button:disabled { opacity: .5; cursor: wait; }
+		.control-note { font-size: 10px; color: var(--muted); margin: 10px 0 0; }
+		aside { padding-top: 5px; }
+		h2 { font-size: 11px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--cyan); margin: 0 0 14px; }
+		.mission { font-family: system-ui, sans-serif; font-size: 22px; line-height: 1.35; margin: 0 0 14px; }
+		aside p { color: var(--muted); font-size: 12px; margin: 0 0 20px; }
+		.specs { margin: 26px 0; border-top: 1px solid var(--line); }
+		.specs div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding: 12px 0; font-size: 11px; }
+		dt { color: var(--muted); } dd { margin: 0; color: var(--text); }
+		.legend { border-left: 2px solid var(--amber); padding-left: 13px; }
+		.legend strong { color: var(--amber); font-weight: 500; }
+		footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; font-size: 10px; color: var(--muted); }
+		a { color: var(--muted); text-underline-offset: 4px; }
+		a:hover { color: var(--cyan); }
+		@media (max-width: 720px) { main { width: min(100% - 24px, 516px); margin-top: 26px; } .workspace { grid-template-columns: minmax(0, 1fr); gap: 26px; } .subtitle { margin-bottom: 20px; } footer { flex-wrap: wrap; } }
+	</style>
 </head>
 <body>
-	<canvas id="flappy" width="500" height="512"></canvas> <br/>
-	<button onclick="speed(60)">x1</button> 
-	<button onclick="speed(120)">x2</button> 
-	<button onclick="speed(180)">x3</button> 
-	<button onclick="speed(300)">x5</button> 
-	<button onclick="speed(0)">MAX</button> 
-	<br/>
-	<a href="http://github.com/xviniette/FlappyLearning">GitHub Repository</a>
-	<script src = "Neuroevolution.js"></script>
-	<script src = "game.js"></script>
+	<main>
+		<header>
+			<p class="eyebrow">Autonomous systems / Experiment 001</p>
+			<h1>Orbital Flight Lab</h1>
+			<p class="subtitle">Fifty pilots. One flight path. Learning through evolution.</p>
+		</header>
+		<div class="workspace">
+			<section class="console" aria-label="Flight simulation">
+				<div class="console-bar"><span>SECTOR 07 / FLIGHT TELEMETRY</span><span class="status" id="simulation-status" role="status">SIMULATION ONLINE</span></div>
+				<canvas id="flappy" width="500" height="512" role="img" aria-label="Live autonomous flight simulation. Canvas telemetry shows score, best score, generation and surviving pilots.">Your browser needs canvas support to display this flight simulation.</canvas>
+				<div class="controls">
+					<span class="controls-label" id="speed-label">Simulation speed</span>
+					<div class="speed-buttons" role="group" aria-labelledby="speed-label">
+						<button type="button" data-fps="60" aria-pressed="true">x1</button>
+						<button type="button" data-fps="120" aria-pressed="false">x2</button>
+						<button type="button" data-fps="180" aria-pressed="false">x3</button>
+						<button type="button" data-fps="300" aria-pressed="false">x5</button>
+						<button type="button" data-fps="0" aria-pressed="false">MAX</button>
+					</div>
+					<button id="pause-resume" type="button" disabled aria-describedby="simulation-status">Pause</button>
+					<p class="control-note">MAX runs as fast as your browser allows.</p>
+				</div>
+			</section>
+			<aside aria-label="Experiment briefing">
+				<h2>Mission briefing</h2>
+				<p class="mission">Intelligence takes flight.</p>
+				<p>Watch autonomous robotic pilots navigate the station. Every flight tests a neural network. The strongest performers shape the next generation.</p>
+				<dl class="specs">
+					<div><dt>Population</dt><dd>50 pilots</dd></div>
+					<div><dt>Neural network</dt><dd>2 → 2 → 1</dd></div>
+					<div><dt>Fitness</dt><dd>Survival ticks</dd></div>
+					<div><dt>Flight control</dt><dd>Autonomous</dd></div>
+				</dl>
+				<p class="legend"><strong>Amber craft / cyan visor</strong><br>Each overlapping craft is a surviving pilot. When none remain, a new generation launches automatically.</p>
+				<p>Score measures simulation ticks survived. Increase the speed to explore evolution over more generations.</p>
+			</aside>
+		</div>
+		<footer><span>NEUROEVOLUTION / ORBITAL FLIGHT LAB</span><a href="https://github.com/xviniette/FlappyLearning">Source on GitHub</a></footer>
+	</main>
+	<script src="Neuroevolution.js"></script>
+	<script src="game.js"></script>
+	<script>
+		document.querySelectorAll('[data-fps]').forEach(function(button) {
+			button.addEventListener('click', function() {
+				speed(button.dataset.fps);
+				document.querySelectorAll('[data-fps]').forEach(function(option) {
+					option.setAttribute('aria-pressed', String(option === button));
+				});
+			});
+		});
+	</script>
 </body>
 </html>
